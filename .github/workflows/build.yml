@@ -35,10 +35,8 @@ jobs:
           PY
           >> "$GITHUB_OUTPUT"
 
-      # Debugging step to print the version
       - name: Print version
-        run:
-          echo "Version: ${{ steps.version.outputs.version }}"
+        run: echo "Version: ${{ steps.version.outputs.version }}"
 
       - name: Create tag if missing
         run: |
