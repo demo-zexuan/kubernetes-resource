@@ -66,7 +66,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Create tag if missing
         shell: bash
         run: |
@@ -88,17 +87,17 @@ jobs:
     needs: [build, tag]
     runs-on: ubuntu-latest
     steps:
-      - name: Download wheel artifacts
+      - name: Download wheel artifacts (merged)
         uses: actions/download-artifact@v4
         with:
           path: dist/
-
+          merge-multiple: true
       - name: Create GitHub Release and upload assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.build.outputs.version }}
           name: ${{ needs.build.outputs.version }}
-          files: |
-            dist/**/*
+          files: dist/*
+          overwrite: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
