@@ -1,4 +1,4 @@
-name: Release wheels (pure-python)
+name: Release wheels (multi-platform)
 
 on:
   push:
@@ -11,7 +11,12 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-13, macos-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
 
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -42,17 +47,16 @@ jobs:
           )
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Build universal wheel and sdist
+      - name: Build wheels with build
         run: |
-          mkdir -p dist
-          python -m build --wheel --sdist
-          ls -la dist
+          mkdir -p wheelhouse
+          python -m build --sdist --wheel --outdir wheelhouse
 
-      - name: Upload artifacts
+      - name: Upload wheel artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dist
-          path: dist/*
+          name: wheels-${{ matrix.os }}
+          path: wheelhouse/*
 
   tag:
     needs: build
@@ -84,10 +88,9 @@ jobs:
     needs: [build, tag]
     runs-on: ubuntu-latest
     steps:
-      - name: Download artifacts
+      - name: Download wheel artifacts
         uses: actions/download-artifact@v4
         with:
-          name: dist
           path: dist/
 
       - name: Create GitHub Release and upload assets
