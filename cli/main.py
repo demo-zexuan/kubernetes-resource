@@ -7,6 +7,7 @@ from typing import List, Optional
 import typer
 from loguru import logger
 from tqdm import tqdm
+from importlib.resources import files as ir_files
 
 app = typer.Typer(help="统一的 Kubernetes 部署 CLI")
 
@@ -101,6 +102,12 @@ def kubectl_wait(label: str, namespace: str, timeout: str = "300s") -> None:
     run_cmd(cmd)
 
 
+def resource_dir_for(stack: str) -> Path:
+    # Resolves to packaged resources under cli/resource/<stack>
+    base = ir_files("cli").joinpath("resource").joinpath(stack)
+    return Path(str(base))
+
+
 @app.command("deploy")
 def deploy(
         stack: str = typer.Argument(..., help="栈名称: 例如monitor", autocompletion=complete_stack),
@@ -116,16 +123,12 @@ def deploy(
 
     ensure_kubectl()
 
-    project_root = Path(__file__).resolve().parents[1]
-    resource_dir = project_root / "resource"
-
     if stack == "monitoring":
-        monitor_dir = resource_dir / "monitoring"
+        monitor_dir = resource_dir_for("monitoring")
         logger.info("开始部署 Prometheus 与 Grafana 监控栈...")
 
         files = [monitor_dir / name for name in SUPPORT_STACKS["monitoring"].files]
 
-        # 使用 tqdm 展示进度
         with tqdm(total=len(files), desc="应用清单", unit="个", ncols=100) as pbar:
             for fp in files:
                 try:
