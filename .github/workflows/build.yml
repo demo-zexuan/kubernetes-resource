@@ -1,15 +1,21 @@
-name: Release wheel
+# yaml
+name: Release wheels (multi-platform)
 
 on:
   push:
     branches: [ master ]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  build-and-release:
-    runs-on: macos-latest
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-13, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,14 +25,14 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install uv
+      - name: Install build tools
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          uv --version
+          python -m pip install --upgrade pip
+          python -m pip install build cibuildwheel
 
       - name: Read version from pyproject.toml
         id: version
+        shell: bash
         run: |
           VERSION=$(python - <<'EOF'
           import tomllib, pathlib
@@ -36,36 +42,38 @@ jobs:
           )
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Print version
+      - name: Build wheels with cibuildwheel
+        env:
+          CIBW_BUILD: "cp311-*"
+          CIBW_SKIP: "pp*"
+          CIBW_TEST_SKIP: "*"
+          CIBW_ARCHS_MACOS: "x86_64 arm64"
+          CIBW_ARCHS_LINUX: "x86_64 aarch64"
+          CIBW_ARCHS_WINDOWS: "AMD64"
         run: |
-          echo "Version: ${{ steps.version.outputs.version }}"
+          python -m cibuildwheel --output-dir wheelhouse
 
-      - name: Create tag if missing
-        run: |
-          TAG="${{ steps.version.outputs.version }}"
-          echo "Attempting to create tag: $TAG"
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists."
-          elif [ -z "$TAG" ]; then
-            echo "Error: TAG variable is empty."
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git tag "$TAG"
-            git push origin "$TAG"
-          fi
+      - name: Upload wheel artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}
+          path: wheelhouse/*
 
-      - name: Build wheel
-        run: |
-          uv build
-          ls -la dist
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
 
       - name: Create GitHub Release and upload assets
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.version }}
-          name: ${{ steps.version.outputs.version }}
+          tag_name: ${{ needs.build.outputs.version || github.ref_name }}
+          name: ${{ needs.build.outputs.version || github.ref_name }}
           files: |
-            dist/*.whl
+            dist/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
