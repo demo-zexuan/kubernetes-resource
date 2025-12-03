@@ -19,7 +19,7 @@ class K8sStack(object):
 
 
 SUPPORT_STACKS = {
-    "monitor": K8sStack("monitor", "Prometheus 与 Grafana 监控栈", [
+    "monitoring": K8sStack("monitoring", "Prometheus 与 Grafana 监控栈", [
         "namespace.yaml",
         "prometheus-rbac.yaml",
         "prometheus-config.yaml",
@@ -38,6 +38,12 @@ SUPPORT_STACKS = {
         # 待添加
     ]),
 }
+
+
+def complete_stack(incomplete: str) -> List[str]:
+    # suggest stack names that start with the typed fragment
+    stacks = list(SUPPORT_STACKS.keys())
+    return [s for s in stacks if s.startswith(incomplete.lower())]
 
 
 def run_cmd(cmd: List[str], cwd: Optional[Path] = None, check: bool = True) -> subprocess.CompletedProcess:
@@ -95,9 +101,9 @@ def kubectl_wait(label: str, namespace: str, timeout: str = "300s") -> None:
     run_cmd(cmd)
 
 
-@app.command("apply")
+@app.command("deploy")
 def deploy(
-        stack: str = typer.Argument(..., help="栈名称: 例如monitor"),
+        stack: str = typer.Argument(..., help="栈名称: 例如monitor", autocompletion=complete_stack),
         dry_run: bool = typer.Option(False, "--dry-run", help="服务端干跑"),
         timeout: str = typer.Option("300s", "--timeout", help="等待超时时长, 如 300s"),
         verbose: bool = typer.Option(False, "--verbose", "-v", help="详细日志"),
@@ -113,11 +119,11 @@ def deploy(
     project_root = Path(__file__).resolve().parents[1]
     resource_dir = project_root / "resource"
 
-    if stack == "monitor":
-        monitor_dir = resource_dir / "monitor"
+    if stack == "monitoring":
+        monitor_dir = resource_dir / "monitoring"
         logger.info("开始部署 Prometheus 与 Grafana 监控栈...")
 
-        files = [monitor_dir / name for name in SUPPORT_STACKS["monitor"].files]
+        files = [monitor_dir / name for name in SUPPORT_STACKS["monitoring"].files]
 
         # 使用 tqdm 展示进度
         with tqdm(total=len(files), desc="应用清单", unit="个", ncols=100) as pbar:
@@ -148,7 +154,7 @@ def deploy(
         else:
             logger.info("干跑完成，未实际创建资源。")
     else:
-        logger.error(f"未知栈 '{stack}'，可用: monitor")
+        logger.error(f"未知栈 '{stack}'，可用: monitoring")
         raise typer.Exit(code=2)
 
 
@@ -164,7 +170,7 @@ def list_stacks():
 
 @app.command("delete")
 def delete_stack(
-        stack: str = typer.Argument(..., help="栈名称: 例如monitor"),
+        stack: str = typer.Argument(..., help="栈名称: 例如monitoring", autocompletion=complete_stack),
         dry_run: bool = typer.Option(False, "--dry-run", help="服务端干跑"),
         verbose: bool = typer.Option(False, "--verbose", "-v", help="详细日志"),
 ):
@@ -182,12 +188,12 @@ def delete_stack(
         logger.warning(f"命名空间 '{stack}' 不存在，跳过删除。")
         raise typer.Exit(code=0)
 
-    if stack == "monitor":
+    if stack == "monitoring":
         logger.info("开始删除 Prometheus 与 Grafana 监控栈...")
-        cmd = ["kubectl", "delete", "namespaces", "monitor"]
+        cmd = ["kubectl", "delete", "namespaces", "monitoring"]
         run_cmd(cmd)
     else:
-        logger.error(f"未知栈 '{stack}'，可用: monitor")
+        logger.error(f"未知栈 '{stack}'，可用: monitoring")
         raise typer.Exit(code=2)
 
 

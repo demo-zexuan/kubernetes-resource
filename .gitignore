@@ -1,2 +1,4 @@
 .idea
 /uv.lock
+/dist/
+/kubernetes_resource.egg-info/
