@@ -1,4 +1,3 @@
-# yaml
 name: Release wheel
 
 on:
@@ -36,11 +35,19 @@ jobs:
           PY
           >> "$GITHUB_OUTPUT"
 
+      # Debugging step to print the version
+      - name: Print version
+        run:
+          echo "Version: ${{ steps.version.outputs.version }}"
+
       - name: Create tag if missing
         run: |
           TAG="${{ steps.version.outputs.version }}"
+          echo "Attempting to create tag: $TAG"
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "Tag $TAG already exists."
+          elif [ -z "$TAG" ]; then
+            echo "Error: TAG variable is empty."
           else
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
