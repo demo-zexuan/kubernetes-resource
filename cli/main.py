@@ -29,6 +29,8 @@ SUPPORT_STACKS = {
         "grafana-deployment.yaml",
         "grafana-service.yaml",
         "monitoring-ingress.yaml",
+        "pushgateway-deployment.yaml",
+        "pushgateway-service.yaml"
     ]),
 
     "elk": K8sStack("elk", "ELK 日志收集栈", [
