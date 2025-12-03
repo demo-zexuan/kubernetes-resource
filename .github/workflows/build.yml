@@ -28,12 +28,13 @@ jobs:
       - name: Read version from pyproject.toml
         id: version
         run: |
-          python - <<EOF
+          VERSION=$(python - <<'EOF'
           import tomllib, pathlib
           data = tomllib.loads(pathlib.Path('pyproject.toml').read_text(encoding='utf-8'))
-          print(f"version=v{data['project']['version']}")
+          print(f"v{data['project']['version']}")
           EOF
-          >> "$GITHUB_OUTPUT"
+          )
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Print version
         run: echo "Version: ${{ steps.version.outputs.version }}"
