@@ -171,7 +171,6 @@ def list_stacks():
 @app.command("delete")
 def delete_stack(
         stack: str = typer.Argument(..., help="栈名称: 例如monitoring", autocompletion=complete_stack),
-        dry_run: bool = typer.Option(False, "--dry-run", help="服务端干跑"),
         verbose: bool = typer.Option(False, "--verbose", "-v", help="详细日志"),
 ):
     """
