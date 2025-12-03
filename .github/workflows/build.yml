@@ -37,7 +37,8 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Print version
-        run: echo "Version: ${{ steps.version.outputs.version }}"
+        run: |
+          echo "Version: ${{ steps.version.outputs.version }}"
 
       - name: Create tag if missing
         run: |
