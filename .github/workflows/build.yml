@@ -1,5 +1,4 @@
-# yaml
-name: Release wheels (multi-platform)
+name: Release wheels (pure-python)
 
 on:
   push:
@@ -12,12 +11,7 @@ permissions:
 
 jobs:
   build:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-13, macos-latest, windows-latest]
-
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -34,7 +28,7 @@ jobs:
       - name: Install build tools
         run: |
           python -m pip install --upgrade pip
-          python -m pip install cibuildwheel==2.*
+          python -m pip install build
 
       - name: Read version from pyproject.toml
         id: version
@@ -48,29 +42,17 @@ jobs:
           )
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Build wheels with cibuildwheel
-        env:
-          # Build Python 3.11 wheels only; adjust as needed (e.g., cp310-*).
-          CIBW_BUILD: "cp311-*"
-          # Enable multiple Linux architectures via QEMU on ubuntu runners.
-          CIBW_ARCHS_LINUX: "x86_64 i686 aarch64"
-          # Build both Intel and Apple Silicon on macOS runners.
-          CIBW_ARCHS_MACOS: "x86_64 arm64"
-          # Windows is x86_64 by default.
-          CIBW_SKIP: "pp* *-win32"  # skip PyPy and 32-bit Windows
-          CIBW_MANYLINUX_X86_64_IMAGE: "manylinux_2_28"
-          CIBW_MANYLINUX_I686_IMAGE: "manylinux_2_28"
-          CIBW_MANYLINUX_AARCH64_IMAGE: "manylinux_2_28"
-          CIBW_TEST_SKIP: "*"
+      - name: Build universal wheel and sdist
         run: |
-          mkdir -p wheelhouse
-          python -m cibuildwheel --output-dir wheelhouse
+          mkdir -p dist
+          python -m build --wheel --sdist
+          ls -la dist
 
-      - name: Upload wheel artifacts
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.os }}
-          path: wheelhouse/*
+          name: dist
+          path: dist/*
 
   tag:
     needs: build
@@ -99,12 +81,13 @@ jobs:
           fi
 
   release:
-    needs: build
+    needs: [build, tag]
     runs-on: ubuntu-latest
     steps:
-      - name: Download wheel artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
+          name: dist
           path: dist/
 
       - name: Create GitHub Release and upload assets
